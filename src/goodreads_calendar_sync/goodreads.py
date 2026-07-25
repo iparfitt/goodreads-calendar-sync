@@ -258,15 +258,16 @@ class GoodreadsClient:
             raise ValueError('Goodreads credentials are required')
 
         shelf_url = self._build_shelf_url(1)
+        logger.info('Goodreads login: shelf URL=%s', shelf_url)
         return_url = quote(shelf_url, safe='')
         signin_page = self._get(f'https://www.goodreads.com/user/sign_in?returnurl={return_url}')
 
         ap_signin_url = self._find_ap_signin_url(signin_page.text)
         if ap_signin_url:
-            logger.debug('Found Goodreads /ap/signin email login URL: %s', ap_signin_url)
+            logger.info('Found Goodreads /ap/signin email login URL')
             signin_page = self._get(ap_signin_url)
         else:
-            logger.debug('No Goodreads /ap/signin email login URL found; parsing initial sign-in page directly')
+            logger.info('No Goodreads /ap/signin email login URL found; parsing initial sign-in page directly')
 
         action, payload = self._parse_email_signin_form(signin_page.text)
         if not action:
@@ -278,16 +279,34 @@ class GoodreadsClient:
             payload['rememberMe'] = 'true'
 
         response = self._post(action, payload, headers={'Referer': signin_page.url, 'Origin': 'https://www.goodreads.com'})
-        logger.debug('Goodreads login POST final URL: %s', response.url)
+        logger.info(
+            'Goodreads login POST response: status=%s final URL=%s history=%s',
+            response.status_code,
+            response.url,
+            [r.status_code for r in response.history],
+        )
         if self._is_signin_page(response.text, response.url):
-            logger.debug('POST response appears to still be a sign-in page; status %s; first body text: %s', response.status_code, response.text[:400])
+            logger.info(
+                'Login POST response still looks like sign-in page; final URL=%s; snippet=%s',
+                response.url,
+                response.text[:400].replace('\n', ' '),
+            )
             raise RuntimeError(
                 f'Goodreads login failed: auth flow did not complete after POST; final URL was {response.url}'
             )
 
         shelf_response = self._get(shelf_url)
+        soup = BeautifulSoup(shelf_response.text, 'html.parser')
+        page_title = soup.title.string.strip() if soup.title and soup.title.string else None
+        logger.info('Loaded shelf URL: status=%s final URL=%s title=%r', shelf_response.status_code, shelf_response.url, page_title)
         if self._is_signin_page(shelf_response.text, shelf_response.url):
+            logger.info(
+                'Shelf page still requires auth; title=%r; snippet=%s',
+                page_title,
+                shelf_response.text[:300].replace('\n', ' '),
+            )
             raise RuntimeError('Goodreads login failed: shelf page still requires auth')
+        logger.info('Goodreads shelf page accessed successfully after login')
 
     def _find_feed_url(self, html: str) -> Optional[str]:
         soup = BeautifulSoup(html, 'html.parser')
