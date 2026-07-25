@@ -1,0 +1,20 @@
+[project]
+name = "goodreads-book-release-sync"
+version = "0.1.0"
+description = "Sync Goodreads 'Want to Read' future releases to an Apple Calendar."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+  "beautifulsoup4",
+  "requests",
+  "caldav",
+  "niquests",
+  "python-dateutil",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourusername/goodreads-book-release-sync"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

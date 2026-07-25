@@ -1,0 +1,6 @@
+beautifulsoup4
+requests
+caldav
+niquests
+python-dateutil
+pytest
