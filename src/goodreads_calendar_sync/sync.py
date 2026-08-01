@@ -8,6 +8,7 @@ from .config import (
     CALENDAR_NAME,
     GOODREADS_EMAIL,
     GOODREADS_PASSWORD,
+    GOODREADS_SESSION_COOKIES,
     ICLOUD_APP_PASSWORD,
     ICLOUD_CALDAV_URL,
     ICLOUD_EMAIL,
@@ -24,6 +25,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(me
 
 def _is_future_release(release_date: Optional[date]) -> bool:
     return release_date is not None and release_date > date.today()
+
+
+def _is_past_release(release_date: Optional[date]) -> bool:
+    return release_date is not None and release_date <= date.today()
 
 
 def _needs_detail_refresh(book: BookInfo, record: Optional[StoredBook]) -> bool:
@@ -73,8 +78,10 @@ def _make_stored_book(book: BookInfo) -> StoredBook:
 
 
 def run_sync() -> None:
-    if not GOODREADS_EMAIL or not GOODREADS_PASSWORD:
-        raise RuntimeError('GOODREADS_EMAIL and GOODREADS_PASSWORD are required')
+    if (not GOODREADS_EMAIL or not GOODREADS_PASSWORD) and not GOODREADS_SESSION_COOKIES:
+        raise RuntimeError(
+            'GOODREADS_EMAIL and GOODREADS_PASSWORD are required unless GOODREADS_SESSION_COOKIES is provided'
+        )
     if not ICLOUD_EMAIL or not ICLOUD_APP_PASSWORD:
         raise RuntimeError('ICLOUD_EMAIL and ICLOUD_APP_PASSWORD are required')
 
@@ -115,6 +122,11 @@ def run_sync() -> None:
     updated_state: Dict[str, StoredBook] = {}
     for book in books:
         record = existing_state.get(book.goodreads_id)
+        if record is not None and _is_past_release(record.release_date):
+            updated_state[book.goodreads_id] = record
+            logger.info('Preserving past release %s without refreshing or changing its event', book.goodreads_id)
+            continue
+
         book = _effective_book(book, record)
         if _needs_detail_refresh(book, record):
             try:
@@ -131,6 +143,10 @@ def run_sync() -> None:
         book.last_checked = datetime.utcnow()
         stored_book = _make_stored_book(book)
         updated_state[book.goodreads_id] = stored_book
+
+        if _is_past_release(book.release_date):
+            logger.info('Preserving passed release %s without changing its event', book.goodreads_id)
+            continue
 
         current_event_exists = calendar_client.find_event_by_uid(calendar, stored_book.calendar_uid) is not None
         should_be_present = _is_future_release(book.release_date)

@@ -1,6 +1,6 @@
 beautifulsoup4
 requests
 caldav
-niquests
 python-dateutil
+typing_extensions>=4.7
 pytest

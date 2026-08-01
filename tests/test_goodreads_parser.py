@@ -7,6 +7,7 @@ from goodreads_calendar_sync.goodreads import (
     _is_placeholder_text,
     _parse_iso_date,
 )
+from goodreads_calendar_sync.sync import _is_past_release
 
 
 def test_extract_book_id_from_url():
@@ -18,6 +19,11 @@ def test_parse_iso_date_expected():
 
 def test_parse_iso_date_long_form():
     assert _parse_iso_date('Jan 10, 2026') == date(2026, 1, 10)
+
+
+def test_past_release_is_marked_immutable():
+  assert _is_past_release(date(2020, 1, 1))
+  assert not _is_past_release(date(2099, 1, 1))
 
 
 def test_find_ap_signin_url_prefers_email_login():
@@ -116,9 +122,17 @@ def test_is_signin_page_does_not_false_positive_on_homepage():
 
 
 def test_parse_shelf_html_reads_books():
-    sample = Path(__file__).resolve().parents[1] / "Izzy’s 'to-read' books on Goodreads (122 books).html"
     client = GoodreadsClient(email='x', password='y', user_id='102479483')
-    html = sample.read_text(encoding='utf-8', errors='ignore')
+    html = '''
+        <table>
+          <tr class="bookalike review">
+            <td class="field title"><div class="value"><a href="/book/show/239641042-example-book">Example Book</a></div></td>
+            <td class="field author"><div class="value"><a href="/author/show/1">Example Author</a></div></td>
+            <td class="field.isbn"><div class="value">9781234567890</div></td>
+            <td class="field date_pub"><div class="value">Jan 10, 2026</div></td>
+          </tr>
+        </table>
+    '''
     books = client._parse_shelf_html(html)
 
     assert any(book.goodreads_id == '239641042' for book in books)

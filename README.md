@@ -25,9 +25,12 @@ pip install -r requirements.txt
 - `GOODREADS_EMAIL`
 - `GOODREADS_PASSWORD`
 - `GOODREADS_USER_ID` or `GOODREADS_SHELF_URL`
+- Optional: `GOODREADS_SESSION_COOKIES`
 - `ICLOUD_EMAIL`
-- `ICLOUD_APP_PASSWORD`
+- `ICLOUD_APP_PASSWORD` (Apple app-specific password)
 - Optional: `ICLOUD_CALDAV_URL` (default: `https://caldav.icloud.com/`)
+
+> `ICLOUD_APP_PASSWORD` must be an app-specific password generated from your Apple ID account page, not your normal Apple ID password.
 
 You can set these in your shell or by creating a `.env` file in the repository root.
 
@@ -39,7 +42,11 @@ python main.py
 
 ## GitHub Actions
 
-The workflow in `.github/workflows/sync.yml` runs hourly and uses the same environment variables.
+The workflow in `.github/workflows/sync.yml` runs daily and uses the same environment variables. It caches `state.json` between runs so removed books can be detected.
+
+Once a book's publication date has passed, its calendar event and stored record are left unchanged. The sync does not refresh, update, or delete that book afterward.
+
+The workflow does not send email itself. Emails for failed GitHub Actions runs are controlled by GitHub notification settings, and GitHub does not provide a built-in "only after N consecutive failures" setting. Disable failed-workflow notifications in GitHub Settings if you do not want individual failure emails; a two- or three-failure threshold would require a separate notification service.
 
 ### GitHub-hosted runner note
 

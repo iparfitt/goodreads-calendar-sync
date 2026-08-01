@@ -8,9 +8,12 @@ dependencies = [
   "beautifulsoup4",
   "requests",
   "caldav",
-  "niquests",
   "python-dateutil",
+  "typing_extensions>=4.7",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
 
 [project.urls]
 Homepage = "https://github.com/yourusername/goodreads-book-release-sync"

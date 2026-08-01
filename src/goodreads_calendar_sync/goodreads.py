@@ -5,7 +5,6 @@ from datetime import datetime, date
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse, urlunparse
 
-import json
 import requests
 from bs4 import BeautifulSoup
 from dateutil.parser import parse as parse_datetime

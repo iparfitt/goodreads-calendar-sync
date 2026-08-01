@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import caldav
+from caldav.lib.error import AuthorizationError
 
 from .types import BookInfo
 
@@ -55,7 +56,13 @@ class AppleCalendarClient:
         self.password = password
         self.url = url
         self.client = caldav.DAVClient(url=self.url, username=self.username, password=self.password)
-        self.principal = self.client.principal()
+        try:
+            self.principal = self.client.principal()
+        except AuthorizationError as exc:
+            raise RuntimeError(
+                f'iCloud CalDAV authorization failed for {self.username} at {self.url}. '
+                'Check that ICLOUD_APP_PASSWORD is a valid Apple app-specific password and that ICLOUD_EMAIL matches your Apple ID.'
+            ) from exc
 
     def _get_calendar(self, name: str):
         for calendar in self.principal.calendars():
