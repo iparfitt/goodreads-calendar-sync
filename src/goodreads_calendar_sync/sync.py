@@ -8,7 +8,6 @@ from .config import (
     CALENDAR_NAME,
     GOODREADS_EMAIL,
     GOODREADS_PASSWORD,
-    GOODREADS_SESSION_COOKIES,
     ICLOUD_APP_PASSWORD,
     ICLOUD_CALDAV_URL,
     ICLOUD_EMAIL,
@@ -78,10 +77,8 @@ def _make_stored_book(book: BookInfo) -> StoredBook:
 
 
 def run_sync() -> None:
-    if (not GOODREADS_EMAIL or not GOODREADS_PASSWORD) and not GOODREADS_SESSION_COOKIES:
-        raise RuntimeError(
-            'GOODREADS_EMAIL and GOODREADS_PASSWORD are required unless GOODREADS_SESSION_COOKIES is provided'
-        )
+    if not GOODREADS_EMAIL or not GOODREADS_PASSWORD:
+        raise RuntimeError('GOODREADS_EMAIL and GOODREADS_PASSWORD are required')
     if not ICLOUD_EMAIL or not ICLOUD_APP_PASSWORD:
         raise RuntimeError('ICLOUD_EMAIL and ICLOUD_APP_PASSWORD are required')
 

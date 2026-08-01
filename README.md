@@ -25,7 +25,6 @@ pip install -r requirements.txt
 - `GOODREADS_EMAIL`
 - `GOODREADS_PASSWORD`
 - `GOODREADS_USER_ID` or `GOODREADS_SHELF_URL`
-- Optional: `GOODREADS_SESSION_COOKIES`
 - `ICLOUD_EMAIL`
 - `ICLOUD_APP_PASSWORD` (Apple app-specific password)
 - Optional: `ICLOUD_CALDAV_URL` (default: `https://caldav.icloud.com/`)
@@ -47,24 +46,6 @@ The workflow in `.github/workflows/sync.yml` runs daily and uses the same enviro
 Once a book's publication date has passed, its calendar event and stored record are left unchanged. The sync does not refresh, update, or delete that book afterward.
 
 The workflow does not send email itself. Emails for failed GitHub Actions runs are controlled by GitHub notification settings, and GitHub does not provide a built-in "only after N consecutive failures" setting. Disable failed-workflow notifications in GitHub Settings if you do not want individual failure emails; a two- or three-failure threshold would require a separate notification service.
-
-### GitHub-hosted runner note
-
-Goodreads can challenge new login environments from GitHub-hosted runners. To make the hosted workflow more reliable, you can store a valid Goodreads session cookie in `GOODREADS_SESSION_COOKIES` instead of reusing email/password login every run.
-
-How to use session cookies:
-
-1. Open Goodreads in a browser where you are logged in.
-2. Open developer tools and inspect cookies for `goodreads.com`.
-3. Copy the relevant cookie names and values into valid JSON, for example:
-   ```json
-   {"session-id":"xxxx","session-token":"xxxx","s":"xxxx"}
-   ```
-4. Add that JSON string as a GitHub repository secret named `GOODREADS_SESSION_COOKIES`.
-
-When the workflow runs, it will try the saved session cookie first. If the cookie is valid, it will skip the email/password login flow.
-
-If the session expires or becomes invalid, you must refresh the cookie and update the secret.
 
 ## State
 

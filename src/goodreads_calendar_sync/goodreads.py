@@ -9,7 +9,6 @@ import requests
 from bs4 import BeautifulSoup
 from dateutil.parser import parse as parse_datetime
 from requests.adapters import HTTPAdapter
-from requests.cookies import RequestsCookieJar
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -17,7 +16,6 @@ logger = logging.getLogger(__name__)
 from .config import (
     GOODREADS_PASSWORD,
     GOODREADS_EMAIL,
-    GOODREADS_SESSION_COOKIES,
     GOODREADS_SHELF_NAME,
     GOODREADS_SHELF_URL,
     GOODREADS_USER_ID,
@@ -141,28 +139,7 @@ class GoodreadsClient:
                 'Sec-Fetch-User': '?1',
             }
         )
-        self._load_session_cookies()
         self._configure_retry()
-
-    def _load_session_cookies(self) -> None:
-        if not GOODREADS_SESSION_COOKIES:
-            return
-
-        try:
-            cookies = json.loads(GOODREADS_SESSION_COOKIES)
-        except json.JSONDecodeError:
-            logger.warning('GOODREADS_SESSION_COOKIES is not valid JSON; ignoring cookie fallback')
-            return
-
-        if not isinstance(cookies, dict):
-            logger.warning('GOODREADS_SESSION_COOKIES must be a JSON object mapping cookies to values')
-            return
-
-        jar = RequestsCookieJar()
-        for name, value in cookies.items():
-            jar.set(name, value, domain='.goodreads.com', path='/')
-        self.session.cookies = jar
-        logger.info('Loaded Goodreads session cookies from GOODREADS_SESSION_COOKIES')
 
     def _configure_retry(self) -> None:
         retry = Retry(
@@ -278,25 +255,10 @@ class GoodreadsClient:
 
     def login(self) -> None:
         if not self.email or not self.password:
-            if not GOODREADS_SESSION_COOKIES:
-                raise ValueError('Goodreads credentials are required unless GOODREADS_SESSION_COOKIES is provided')
+            raise ValueError('Goodreads credentials are required')
 
         shelf_url = self._build_shelf_url(1)
         logger.info('Goodreads login: shelf URL=%s', shelf_url)
-
-        # If session cookies are supplied, try to use them first.
-        if GOODREADS_SESSION_COOKIES:
-            logger.info('Attempting Goodreads login via saved session cookies')
-            try:
-                shelf_response = self._get(shelf_url)
-                if not self._is_signin_page(shelf_response.text, shelf_response.url):
-                    soup = BeautifulSoup(shelf_response.text, 'html.parser')
-                    page_title = soup.title.string.strip() if soup.title and soup.title.string else None
-                    logger.info('Goodreads session cookie login successful: status=%s final URL=%s title=%r', shelf_response.status_code, shelf_response.url, page_title)
-                    return
-                logger.info('Saved Goodreads session cookies were not valid; falling back to credential login')
-            except Exception as exc:
-                logger.warning('Error validating Goodreads session cookies: %s; falling back to credential login', exc)
 
         return_url = quote(shelf_url, safe='')
         signin_page = self._get(f'https://www.goodreads.com/user/sign_in?returnurl={return_url}')
