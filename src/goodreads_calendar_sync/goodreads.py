@@ -82,7 +82,7 @@ def _parse_series_from_page(soup: BeautifulSoup) -> Optional[str]:
 
 def _parse_pre_release_date(soup: BeautifulSoup) -> Optional[date]:
     container = soup.select_one('.PreReleaseDetails')
-    if not container:
+    if container is None:
         return None
 
     text = ' '.join(container.stripped_strings)
@@ -92,7 +92,7 @@ def _parse_pre_release_date(soup: BeautifulSoup) -> Optional[date]:
 def _parse_jsonld_metadata(soup: BeautifulSoup) -> Dict[str, Optional[str]]:
     metadata: Dict[str, Optional[str]] = {}
     script = soup.select_one('script[type="application/ld+json"]')
-    if not script or not script.string:
+    if script is None or not script.string:
         return metadata
 
     try:

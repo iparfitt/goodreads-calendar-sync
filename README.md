@@ -10,7 +10,7 @@ Synchronise Goodreads "Want to Read" future releases to an Apple Calendar called
 - Creates or updates all-day events in an iCloud Calendar.
 - Detects added, removed, title/author/release date changes.
 - Stores sync state in `state.json`.
-- Runs hourly via GitHub Actions.
+- Runs daily via GitHub Actions.
 
 ## Setup
 

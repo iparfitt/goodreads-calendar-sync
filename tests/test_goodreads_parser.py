@@ -22,8 +22,8 @@ def test_parse_iso_date_long_form():
 
 
 def test_past_release_is_marked_immutable():
-  assert _is_past_release(date(2020, 1, 1))
-  assert not _is_past_release(date(2099, 1, 1))
+    assert _is_past_release(date(2020, 1, 1))
+    assert not _is_past_release(date(2099, 1, 1))
 
 
 def test_find_ap_signin_url_prefers_email_login():
