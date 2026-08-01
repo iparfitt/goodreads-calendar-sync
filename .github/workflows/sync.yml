@@ -34,4 +34,19 @@ jobs:
           ICLOUD_EMAIL: ${{ secrets.ICLOUD_EMAIL }}
           ICLOUD_APP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}
           ICLOUD_CALDAV_URL: ${{ secrets.ICLOUD_CALDAV_URL }}
-        run: python main.py
+        run: |
+          for attempt in 1 2 3; do
+            echo "Sync attempt $attempt of 3"
+            if python main.py; then
+              echo "Sync succeeded"
+              exit 0
+            fi
+
+            if [[ "$attempt" -lt 3 ]]; then
+              echo "Sync failed; retrying in 30 seconds"
+              sleep 30
+            fi
+          done
+
+          echo "Sync failed after 3 attempts"
+          exit 1

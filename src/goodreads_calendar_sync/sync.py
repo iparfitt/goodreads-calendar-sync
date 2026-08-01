@@ -182,3 +182,4 @@ def run_sync() -> None:
     logger.info('Deleted: %d', len(results['deleted']))
     if results['errors']:
         logger.warning('Errors: %d', len(results['errors']))
+        raise RuntimeError(f'Sync completed with {len(results["errors"])} errors')
