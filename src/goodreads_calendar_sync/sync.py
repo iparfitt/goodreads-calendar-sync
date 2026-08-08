@@ -108,12 +108,12 @@ def run_sync() -> None:
 
     for removed_id in stale_ids:
         record = existing_state.get(removed_id)
-        if record and _is_future_release(record.release_date):
+        if record:
             uid = record.calendar_uid
             deleted = calendar_client.delete_event(calendar, uid)
             if deleted:
                 results['deleted'].append(removed_id)
-                logger.info('Deleted removed future release event %s', removed_id)
+                logger.info('Deleted removed book event %s', removed_id)
         existing_state.pop(removed_id, None)
 
     updated_state: Dict[str, StoredBook] = {}
@@ -168,12 +168,6 @@ def run_sync() -> None:
                 except Exception as exc:
                     logger.error('Failed to sync event for %s: %s', book.goodreads_id, exc)
                     results['errors'].append(book.goodreads_id)
-        else:
-            if current_event_exists:
-                deleted = calendar_client.delete_event(calendar, stored_book.calendar_uid)
-                if deleted:
-                    results['deleted'].append(book.goodreads_id)
-                    logger.info('Deleted past or unpublished event %s', book.goodreads_id)
 
     save_state(state_path, updated_state)
     logger.info('Future releases: %d', len([book for book in updated_state.values() if _is_future_release(book.release_date)]))
