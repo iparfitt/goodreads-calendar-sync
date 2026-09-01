@@ -1,8 +1,10 @@
 import json
 import logging
+import pickle
 import re
 import time
 from datetime import datetime, date
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse, urlunparse
 
@@ -22,11 +24,13 @@ from .config import (
     GOODREADS_USER_ID,
     SHELF_BASE_URL,
     SHELF_PAGE_SIZE,
+    STATE_FILE,
 )
 from .types import BookInfo
 
 
 PLACEHOLDER_TEXT = {'unknown', 'n/a', '-', 'untitled'}
+COOKIES_FILE = Path(STATE_FILE).parent / 'goodreads_cookies.pkl'
 
 
 def _is_placeholder_text(value: Optional[str]) -> bool:
@@ -154,6 +158,41 @@ class GoodreadsClient:
         self.session.mount('https://', adapter)
         self.session.mount('http://', adapter)
 
+    def _load_session_cookies(self) -> bool:
+        try:
+            with open(COOKIES_FILE, 'rb') as f:
+                cookies = pickle.load(f)
+                self.session.cookies.update(cookies)
+                logger.info('Loaded persisted session cookies')
+                return True
+        except FileNotFoundError:
+            logger.info('No persisted session cookies found')
+            return False
+        except Exception as exc:
+            logger.warning('Failed to load session cookies: %s', exc)
+            return False
+
+    def save_session_cookies(self) -> None:
+        try:
+            with open(COOKIES_FILE, 'wb') as f:
+                pickle.dump(self.session.cookies, f)
+                logger.info('Saved session cookies for future runs')
+        except Exception as exc:
+            logger.warning('Failed to save session cookies: %s', exc)
+
+    def _test_session_cookies(self, shelf_url: str) -> bool:
+        try:
+            response = self._get(shelf_url)
+            soup = BeautifulSoup(response.text, 'html.parser')
+            if self._is_signin_page(response.text, response.url):
+                logger.info('Session cookies expired or invalid')
+                return False
+            logger.info('Session cookies are still valid')
+            return True
+        except Exception as exc:
+            logger.warning('Error testing session cookies: %s', exc)
+            return False
+
     def _build_shelf_url(self, page: int = 1) -> str:
         if self.shelf_url:
             parsed = urlparse(self.shelf_url)
@@ -260,6 +299,12 @@ class GoodreadsClient:
 
         shelf_url = self._build_shelf_url(1)
         logger.info('Goodreads login: shelf URL=%s', shelf_url)
+
+        # Try to use persisted session cookies first
+        if self._load_session_cookies():
+            if self._test_session_cookies(shelf_url):
+                return
+            logger.info('Persisted cookies invalid; performing fresh login')
 
         return_url = quote(shelf_url, safe='')
         signin_page = self._get(f'https://www.goodreads.com/user/sign_in?returnurl={return_url}')
