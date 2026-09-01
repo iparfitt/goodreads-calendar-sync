@@ -1,5 +1,5 @@
 import logging
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, Optional
 
@@ -153,9 +153,7 @@ def run_sync() -> None:
                     logger.error('Failed to sync event for %s: %s', book.goodreads_id, exc)
                     results['errors'].append(book.goodreads_id)
 
-    future_count = len([book for book in updated_state.values() if book.release_date and book.release_date > date.today()])
     save_state(state_path, updated_state)
-    logger.info('Future releases: %d', future_count)
     logger.info('Added: %d', len(results['added']))
     logger.info('Updated: %d', len(results['updated']))
     logger.info('Deleted: %d', len(results['deleted']))
