@@ -22,18 +22,6 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(message)s')
 
 
-def _is_future_release(release_date: Optional[date]) -> bool:
-    return release_date is not None and release_date > date.today()
-
-
-def _is_past_release(release_date: Optional[date]) -> bool:
-    return release_date is not None and release_date <= date.today()
-
-
-def _has_valid_release_date(release_date: Optional[date]) -> bool:
-    return release_date is not None
-
-
 def _needs_detail_refresh(book: BookInfo, record: Optional[StoredBook]) -> bool:
     if record is None:
         return True
@@ -123,10 +111,6 @@ def run_sync() -> None:
     updated_state: Dict[str, StoredBook] = {}
     for book in books:
         record = existing_state.get(book.goodreads_id)
-        if record is not None and _is_past_release(record.release_date):
-            updated_state[book.goodreads_id] = record
-            logger.info('Preserving past release %s without refreshing or changing its event', book.goodreads_id)
-            continue
 
         book = _effective_book(book, record)
         if _needs_detail_refresh(book, record):
@@ -146,7 +130,7 @@ def run_sync() -> None:
         updated_state[book.goodreads_id] = stored_book
 
         current_event_exists = calendar_client.find_event_by_uid(calendar, stored_book.calendar_uid) is not None
-        should_be_present = _has_valid_release_date(book.release_date)
+        should_be_present = book.release_date is not None
         changed = record is None or (
             record.title != book.title or
             record.author != book.author or
@@ -169,8 +153,9 @@ def run_sync() -> None:
                     logger.error('Failed to sync event for %s: %s', book.goodreads_id, exc)
                     results['errors'].append(book.goodreads_id)
 
+    future_count = len([book for book in updated_state.values() if book.release_date and book.release_date > date.today()])
     save_state(state_path, updated_state)
-    logger.info('Future releases: %d', len([book for book in updated_state.values() if _is_future_release(book.release_date)]))
+    logger.info('Future releases: %d', future_count)
     logger.info('Added: %d', len(results['added']))
     logger.info('Updated: %d', len(results['updated']))
     logger.info('Deleted: %d', len(results['deleted']))
