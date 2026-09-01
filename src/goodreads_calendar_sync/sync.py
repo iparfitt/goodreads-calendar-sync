@@ -160,3 +160,6 @@ def run_sync() -> None:
     if results['errors']:
         logger.warning('Errors: %d', len(results['errors']))
         raise RuntimeError(f'Sync completed with {len(results["errors"])} errors')
+    
+    # Only save cookies on successful completion
+    goodreads.save_session_cookies()
