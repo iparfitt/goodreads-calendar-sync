@@ -180,6 +180,10 @@ class GoodreadsClient:
         except Exception as exc:
             logger.warning('Failed to save session cookies: %s', exc)
 
+    def _clear_session_cookies(self) -> None:
+        self.session.cookies.clear()
+        logger.info('Cleared session cookies')
+
     def _test_session_cookies(self, shelf_url: str) -> bool:
         try:
             response = self._get(shelf_url)
@@ -304,7 +308,8 @@ class GoodreadsClient:
         if self._load_session_cookies():
             if self._test_session_cookies(shelf_url):
                 return
-            logger.info('Persisted cookies invalid; performing fresh login')
+            logger.info('Persisted cookies invalid; clearing and performing fresh login')
+            self._clear_session_cookies()
 
         return_url = quote(shelf_url, safe='')
         signin_page = self._get(f'https://www.goodreads.com/user/sign_in?returnurl={return_url}')
