@@ -4,5 +4,6 @@ __pycache__/
 *.pyd
 .venv/
 state.json
+goodreads_cookies.pkl
 .env
 .pytest_cache/
