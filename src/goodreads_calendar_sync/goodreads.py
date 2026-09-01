@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+import time
 from datetime import datetime, date
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse, urlunparse
@@ -296,18 +297,49 @@ class GoodreadsClient:
                 f'Goodreads login failed: auth flow did not complete after POST; final URL was {response.url}'
             )
 
-        shelf_response = self._get(shelf_url)
-        soup = BeautifulSoup(shelf_response.text, 'html.parser')
-        page_title = soup.title.string.strip() if soup.title and soup.title.string else None
-        logger.info('Loaded shelf URL: status=%s final URL=%s title=%r', shelf_response.status_code, shelf_response.url, page_title)
-        if self._is_signin_page(shelf_response.text, shelf_response.url):
-            logger.info(
-                'Shelf page still requires auth; title=%r; snippet=%s',
-                page_title,
-                shelf_response.text[:300].replace('\n', ' '),
-            )
-            raise RuntimeError('Goodreads login failed: shelf page still requires auth')
-        logger.info('Goodreads shelf page accessed successfully after login')
+        # Retry shelf page access with exponential backoff if it requires auth
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                shelf_response = self._get(shelf_url)
+                soup = BeautifulSoup(shelf_response.text, 'html.parser')
+                page_title = soup.title.string.strip() if soup.title and soup.title.string else None
+                logger.info('Loaded shelf URL: status=%s final URL=%s title=%r', shelf_response.status_code, shelf_response.url, page_title)
+                
+                if not self._is_signin_page(shelf_response.text, shelf_response.url):
+                    logger.info('Goodreads shelf page accessed successfully after login')
+                    return
+                
+                # Shelf page requires auth - retry with backoff
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # 1s, 2s, 4s
+                    logger.warning(
+                        'Shelf page requires auth (attempt %d/%d); waiting %ds before retry',
+                        attempt + 1,
+                        max_retries,
+                        wait_time,
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.info(
+                        'Shelf page still requires auth after all retries; title=%r; snippet=%s',
+                        page_title,
+                        shelf_response.text[:300].replace('\n', ' '),
+                    )
+                    raise RuntimeError('Goodreads login failed: shelf page still requires auth after retries')
+            except requests.RequestException as exc:
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    logger.warning(
+                        'Request error loading shelf (attempt %d/%d): %s; waiting %ds before retry',
+                        attempt + 1,
+                        max_retries,
+                        exc,
+                        wait_time,
+                    )
+                    time.sleep(wait_time)
+                else:
+                    raise RuntimeError(f'Goodreads login failed: could not load shelf after retries: {exc}')
 
     def _find_feed_url(self, html: str) -> Optional[str]:
         soup = BeautifulSoup(html, 'html.parser')
