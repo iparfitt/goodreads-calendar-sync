@@ -30,6 +30,10 @@ def _is_past_release(release_date: Optional[date]) -> bool:
     return release_date is not None and release_date <= date.today()
 
 
+def _has_valid_release_date(release_date: Optional[date]) -> bool:
+    return release_date is not None
+
+
 def _needs_detail_refresh(book: BookInfo, record: Optional[StoredBook]) -> bool:
     if record is None:
         return True
@@ -141,12 +145,8 @@ def run_sync() -> None:
         stored_book = _make_stored_book(book)
         updated_state[book.goodreads_id] = stored_book
 
-        if _is_past_release(book.release_date):
-            logger.info('Preserving passed release %s without changing its event', book.goodreads_id)
-            continue
-
         current_event_exists = calendar_client.find_event_by_uid(calendar, stored_book.calendar_uid) is not None
-        should_be_present = _is_future_release(book.release_date)
+        should_be_present = _has_valid_release_date(book.release_date)
         changed = record is None or (
             record.title != book.title or
             record.author != book.author or
